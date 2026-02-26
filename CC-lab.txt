@@ -1,0 +1,104 @@
+Exp-1
+a)
+1)create an ec2 with key pair of .ppk, copy ip of it
+2) open putty, paste the ip
+3)left side, connection->ssh->auth->credentials, browse the .ppk and click open 
+4)if Linux login as:ec2-user, if Ubuntu login as:ubuntu,                  test: whoami(console)
+
+b)convert .pem file to .ppk using puttyGen, save as private key file, follow same process
+
+c)RDP
+1) create ec-2 in security groups add rdp in the custom tcp, select os:windows
+2) click on connect, using RDP client, click get password, upload the .pem file to decrypt 
+3) click window symbol and search RDP, paste ip of the ec-2
+4) login as Administrator, password: decrypted password
+5)you can see the new system
+
+Exp-2 
+Volumes
+a) create a ec2 select AZ 
+create volume with same AZ size anything 
+attach volume to running ec2 and device name /dev/sdf 
+open ec2 console and just do lsblk 
+b)
+after attaching and connecting to ec2 
+sudo su
+lsblk -fs
+fdisk /dev/nvme1n1    (m,n,p, , , , w)
+lsblk
+mkfs.xfs /dev/nvme1n1p1
+mkdir /mnt/vish
+mount /dev/nvme1n1p1 /mnt/vish
+df -h
+blkid /dev/nvme1n1p1
+(COPY UUID)
+nano /etc/fstab
+(inside that last line add)=UUID=<UUID-value>   /mnt/vish   xfs   defaults,nofail   0   0
+mount -a
+reboot and check for files 
+c) create another ec-2 with same AZ, detach the volume from old ec2 and attach to new one
+in ec2 terminal 
+mkdir /mnt/vish 
+mount /dev/nvme1n1p1 /mnt/vish
+lsblk -fs
+
+SnapShots
+1) for a given volume you created click on actions->create snapshot
+2) from snapshots section click on copy snapshot and select some region
+3) switch to that region and create a volume for it from actions 
+4) attach an ec2 in that region to the created volume with same AZ
+(we can do lsblk if needed)
+
+Exp-3
+1) create 2 ec-2 with 2 diff availability zones and include nfs in the custom tcp
+2) create an efs with only 2 availability zones 
+3) now open consoles of both ec2
+4) commands for both 
+sudo su
+mkdir efs
+yum install -y amazon-efs-utils
+(connect the efs with dns)efs->connect->dns->paste in console 
+cd efs
+in any 1 do nano h.txt and put text 
+shows in other 
+
+EXP-4
+a) 
+1) create s3 bucket, allow acls under ownership
+2) block all public class uncheck that very imp 
+3) versioning enable better coz others need 
+4) after creation click on bucket->permissions->acl->public access->right side vala(tick)
+5) upload any image and click on that->permissions->acl->public access->left and right vala tick
+6) properties->copy link->incog
+
+b)
+1) enable versioning for this compulsory 
+2) upload a text file and change that in local system and upload again 
+3) buckets->objects->click show versions-> you can see
+4) delete the latest version and old version still shows up 
+
+c) Cross region replication 
+1) create 1 more bucket in diff region with same process including having versions
+2) go to first bucket-> management->replication rules
+3) status=enable, source bucket= apply to all objects, destination bucket=select the created one, IAM-role=lab role, replicate existing objects->no(this comes after creating)
+4) upload any file in bucket1, it will automatically show in 2nd bucket 
+
+d) static website hosting 
+1) upload a index, error.html into s3 with following the normal process of creation including setting of acl, allow static hosting and put index, error in fields
+2) click on index.html->permissions -> everyone -> both tick , same with error.html also
+3) bucket->properties->scroll(static website hosting)->copy url->check 
+
+
+EXP-5
+1) create a vpc, cidr:10.0.0.0/16
+2) subnets public: AZ-east-1a, subnet cidr:10.0.1.0/24
+	   private: AZ-east-1a, subnet cidr:10.0.2.0/24
+3) Internet gateway, attach the vpc(shown after creation)
+4) Create route table:
+		public: create, actions->edit routes->add route->destination:0.0.0.0/0, internet gateway(put the custom made),   actions->edit subnet associations -> add the public subnet
+		private: create, actions->edit subnet associations -> add the private subnet
+5) public subnet->actions->edit subnet settings-> auto assign ip (tick)
+6) create a security group, add the custom made vpc under the creation, inbound rules: ssh,http,https
+7) create an ec-2 for public subnet, edit network->vpc(custom), subnet:public, select existing security group:custom made
+8) do the same for ec-2 of private subnet
+9) connect to both public subnet ec-2 will connect, other will not 
