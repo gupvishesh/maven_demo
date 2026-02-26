@@ -102,3 +102,599 @@ EXP-5
 7) create an ec-2 for public subnet, edit network->vpc(custom), subnet:public, select existing security group:custom made
 8) do the same for ec-2 of private subnet
 9) connect to both public subnet ec-2 will connect, other will not 
+
+
+->Exp5: 
+1) Create vpc
+choose vpc only -> name: custom-vpc ->IPv4 CIDR block: e.g. 10.0.0.0/16 -> click create vpc
+2) subnet creation (public & private) in same az
+subnets -> create subnets -> select created vpc -> chooze az -> 
+in public subnet enter 10.0.0.0/24 in ipv4 subnet cidr block -> create subnet
+
+private subnet creation:
+same as public subnet but ipv4 subnet cidr block as 10.0.2.0/24
+3) Instance gateway creation
+create igw -> name: custom-igw -> create
+->select the created internet gateway -> actions attach to vpc 
+4) create route tables separate for public and private 
+create route table -> select vpc-> create -> edit route -> internet gateway as igw -> save changes
+
+for private same create route table and but for edit routes no igw
+
+5) enable auto assign ipv4 address edit subnet settings (select public subnet)
+
+6) configure security groups
+create security group
+add inbound rules: http, https: any ip and ssh: my ip
+
+7) create 2 ec2 instances for public and private with different network settings
+8) after creating instances go to connect in that ec2 instance connect -> at last click on connect (public ec2 instance)
+
+
+expttt 6
+🔥 PART 1 — CREATE VPC
+1️⃣ Go to:
+
+👉 AWS Console
+👉 Search VPC
+👉 Click VPC
+
+2️⃣ Click:
+
+👉 Create VPC
+
+Choose:
+
+Resources to create → VPC only
+
+Name → MyVPC
+
+IPv4 CIDR → 10.0.0.0/16
+
+Tenancy → Default
+
+Click:
+👉 Create VPC
+
+✅ Done.
+
+🔥 PART 2 — CREATE SUBNETS
+1️⃣ Click → Subnets (Left panel)
+
+Click:
+👉 Create subnet
+
+🔹 Public Subnet
+
+VPC → Select MyVPC
+
+Subnet name → Public-Subnet
+
+AZ → choose any (example us-east-1a)
+
+IPv4 CIDR → 10.0.1.0/24
+
+Click → Create
+
+🔹 Private Subnet
+
+Click → Create subnet again
+
+VPC → MyVPC
+
+Subnet name → Private-Subnet
+
+AZ → same or different
+
+IPv4 CIDR → 10.0.2.0/24
+
+Click → Create
+
+🔥 PART 3 — CREATE INTERNET GATEWAY
+
+Click:
+👉 Internet Gateways (left side)
+
+Click:
+👉 Create Internet Gateway
+
+Name → MyIGW
+
+Click → Create
+
+Now attach it:
+
+Select IGW
+Click → Actions
+Click → Attach to VPC
+Select MyVPC
+Click → Attach
+
+🔥 PART 4 — PUBLIC ROUTE TABLE
+
+Click:
+👉 Route Tables
+
+Click:
+👉 Create Route Table
+
+Name → Public-Route
+
+VPC → MyVPC
+
+Click → Create
+
+Now configure route:
+
+Select Public-Route
+
+Click:
+👉 Routes tab
+👉 Edit routes
+👉 Add route
+
+Destination:
+
+0.0.0.0/0
+
+Target:
+👉 Internet Gateway
+👉 Select MyIGW
+
+Click → Save changes
+
+Now attach it to Public Subnet:
+
+Click:
+👉 Subnet associations
+👉 Edit subnet associations
+👉 Select Public-Subnet
+
+Save.
+
+🔥 PART 5 — SECURITY GROUPS
+
+Go to:
+👉 EC2
+👉 Security Groups
+
+🔹 Create Bastion SG
+
+Click → Create security group
+
+Name → Bastion-SG
+
+VPC → MyVPC
+
+Inbound rule:
+
+Type → SSH
+
+Port → 22
+
+Source → My IP
+
+Click → Create
+
+🔹 Create DB SG
+
+Click → Create security group
+
+Name → DB-SG
+
+VPC → MyVPC
+
+Inbound rules:
+
+SSH
+
+Port 22
+
+Source → Custom → Put Bastion private IP (example 10.0.1.x)
+
+MySQL
+
+Port 3306
+
+Source → 10.0.1.0/24
+
+Click → Create
+
+🔥 PART 6 — LAUNCH EC2 INSTANCES
+
+Go to:
+👉 EC2 → Instances
+👉 Launch Instance
+
+🔹 Bastion Server
+
+Name → Bastion
+
+AMI → Ubuntu
+
+Instance type → t2.micro
+
+Key pair → create or select bastion.pem
+
+Network → MyVPC
+
+Subnet → Public-Subnet
+
+Auto-assign public IP → ENABLE
+
+Security Group → Bastion-SG
+
+Click → Launch
+
+🔹 DB Server
+
+Launch again:
+
+Name → DBServer
+
+AMI → Ubuntu
+
+Key pair → dbserver.pem
+
+Network → MyVPC
+
+Subnet → Private-Subnet
+
+Auto-assign public IP → DISABLE
+
+Security Group → DB-SG
+
+Launch.
+
+🔥 PART 7 — NAT GATEWAY (VERY IMPORTANT)
+1️⃣ Allocate Elastic IP
+
+Go to:
+👉 EC2 → Elastic IP
+👉 Allocate Elastic IP
+👉 Allocate
+
+2️⃣ Create NAT Gateway
+
+Go to:
+👉 VPC → NAT Gateways
+👉 Create NAT Gateway
+
+Name → MyNAT
+
+Subnet → Public-Subnet ⚠️ IMPORTANT
+
+Elastic IP → Select allocated one
+
+Click → Create
+
+Wait until status = Available.
+
+3️⃣ Create Private Route Table
+
+Go to:
+👉 Route Tables
+👉 Create route table
+
+Name → Private-Route
+
+VPC → MyVPC
+
+Create.
+
+Select Private-Route
+
+👉 Edit routes
+👉 Add route
+
+Destination:
+
+0.0.0.0/0
+
+Target:
+👉 NAT Gateway
+👉 Select MyNAT
+
+Save.
+
+Now attach to Private Subnet:
+
+👉 Subnet associations
+👉 Edit
+👉 Select Private-Subnet
+👉 Save
+
+🔥 FINAL TEST
+
+SSH into Bastion:
+
+ssh -i bastion.pem ubuntu@<Bastion Public IP>
+
+From Bastion:
+
+ssh -i dbserver.pem ubuntu@10.0.2.x
+
+Inside DB server:
+
+sudo apt update
+
+If it works = NAT is working.
+
+
+EXP 4: s3 bucket
+1) bucket name -> ACLs enabled -> uncheck all public access -> Check I acknowledge that this bucket will become public -> create bucket
+2)Enable public access at bucket level (ACL) : bucketname -> permissions tab -> scroll to ACL -> edit -> everyone (read and list access)
+3) upload object to bucket: bucket name -> upload -> upload image -> click on upload -> permissions tab -> scroll to acl -> edit -> check list and read save -> copy url of object and see the image
+4) enabling versioning: click on bucket -> properties -> enable versioning (edit)
+try to upload the fines edit it and reupload versions are seen
+5) cross region replication: create two buckets both from different region cource and destination bucket -> click on src bucket -> management tab -> add replication rule -> name -> source bucket (check apply to all..) -> destination (specify a bucket in another account)->IAM role (labrole) -> create replication rule -> try to upload image in source bucket and access from destination bucket.
+6) static website hosting: create bucket -> permissions -> bucket level(ACL enable only read no list) -> properties -> static web hosting -> edit -> enable -> upload index.html and error.html -> for both enable acl for read read permissions -> copy url from static web hoisting and paste
+
+
+
+EXP 2:
+1) create and attach ebs vol to ec2 instance 
+Note here while creating volume availability zone must be same as ec2 instance
+ec2 dashboard -> create volume -> volume type gp3 -> size -> create vol
+select newly vol -> actions -> attach vol -> select ec2 instance -> device name (dev/xvdf) -> click attach 
+verify vol -> connect e3 instance using ssh -> check attached diks -> cmd (lsblk) -> identify new vol (dev/xvdf)
+2) Increase/decrease of cpu and RAM
+-> stop ec2 instance with ebs vol -> actions -> instance settings -> change instance type -> t2.medium -> click modify
+
+3) mounting an ebs vol to Linux ec2 instance
+do same thing -> create ec2 instance -> create volume -> attach vol to ebs -> connect it with ssh key -> 
+cmds to verify: 
+1) lsblk
+2) lsblk -fs (check file system)
+3) sudo fdisk /dev/xvdf (create partition)
+4) in side fdisk 
+   press m (help menu)
+   press n (new partition)
+   press p (primary partition)
+   press enter (3 times ) we take default value
+   press w (write changes and exit)
+5) sudo partprobe (notify kernel)
+6) lsblk -fs (verify new partition)
+7) partitioning: sudo mkfs.xfs /dev/xvdbf1
+8) create mount directory: sudo mkdir /mnt/palak
+   mount the volume: sudo mount /dev/xvdbf1/mnt/palak
+   df -h (verify)
+9) sudo mkdir /mnt/palak
+10)sudo mount /dev/xvdbf1 /mnt/palak
+11)lsblk -fs (verify) 
+12)sudo blkid /dev/xvdbf1
+copy the uuid and add default values as sudo UUID=6fda02d6-5a05-4243-9015-deccb97b921f   /data   xfs   defaults,nofail   0   2
+13)sudo nano /etc/fstab
+14)sudo mkdir -p /data
+15)sudo mount -a
+16)df -h
+reboot and check partition still exists 
+
+4) snapshot on volume on ebs
+
+select vol -> actions -> create snapshot -> name ans description -> create
+1) copy snapshot to another region: select snapshot -> actions -> copy snapshot -> destination region to copy snapshot -> click copy
+2) create volume for snapshot -> select snapshot -> create vol(actions) -> configure volume settings -> create vol -> attach this vol to ec2 instance
+
+
+exp1: 
+🧾 PREREQUISITES
+Make sure you have:
+•	✅ EC2 Ubuntu instance running
+•	✅ .ppk private key file
+•	✅ PuTTY installed (Windows)-- https://putty.org/index.html   (INSTALL FIRST ONE)
+________________________________________
+🔹 STEP 1: Check Security Group
+Go to EC2 → Security Groups → Inbound rules
+Ensure this rule exists:
+Type: SSH
+Port: 22
+Source: My IP
+❌ If SSH is blocked → connection will fail
+________________________________________
+🔹 STEP 2: Open PuTTY
+1.	Launch PuTTY
+2.	In Session screen:
+Host Name (or IP address): EC2—CONNECT—COPY (DNS NAME)
+ubuntu@<PUBLIC-IP>
+Example:
+ubuntu@3.110.xxx.xxx
+________________________________________
+🔹 STEP 3: Attach the .ppk Key
+In PuTTY left menu, go to:
+Connection → SSH → Auth → Credentials
+1.	Click Browse
+2.	Select your .ppk file
+3.	Click Open
+________________________________________
+🔹 STEP 4: Connect to EC2
+Click Open
+•	First time → click Yes (security alert)
+•	PuTTY will log in automatically as:
+ubuntu
+🎉 You are now connected to your Ubuntu EC2 instance
+________________________________________
+🧪 VERIFY CONNECTION
+Run:
+whoami
+Output should be:
+Ubuntu
+
+________________________________________
+ Connect EC2 Ubuntu Instance Using PuTTY (Windows) ---USING PEM KEYPAIR
+________________________________________
+PREREQUISITES
+You must have:
+•	✅ EC2 Ubuntu instance running
+•	✅ Public IPv4 address (or Elastic IP)
+•	✅ Key pair (.pem file) used while launching EC2
+•	✅ PuTTY & PuTTYgen installed
+👉 Download PuTTY:
+https://www.putty.org
+________________________________________
+🔹 STEP 1: Convert .pem to .ppk using PuTTYgen
+PuTTY cannot use .pem directly.
+Steps:
+1.	Open PuTTYgen
+2.	Click Load
+3.	Select your .pem file
+(change file type to All Files)
+4.	Click Open
+5.	Click Save private key
+6.	Save as keyname.ppk
+✔ Conversion done
+________________________________________
+🔹 STEP 2: Get EC2 Public IP
+Go to:
+AWS Console → EC2 → Instances---CONNECT –COPY DNS NAME
+________________________________________
+🔹 STEP 3: Configure PuTTY
+1️⃣ Open PuTTY
+Session:
+•	Host Name (or IP address): dns name
+________________________________________
+2️⃣ Load Private Key
+Go to:
+Connection → SSH → Auth → Credentials
+•	Click Browse
+•	Select your .ppk file
+________________________________________
+🔹 STEP 4: Connect
+Click Open
+•	First time → click Yes (security alert)
+•	Login happens automatically as:
+ubuntu
+🎉 You are now connected to Ubuntu EC2
+________________________________________
+🧪 VERIFY CONNECTION
+Run:
+whoami
+Output:
+ubuntu
+________________________________________
+):
+________________________________________
+Connecting to EC2 Using AWS CloudShell
+1.	Create the EC2 instance using a key pair (.pem).
+2.	Log in to AWS Console and click on the CloudShell icon (terminal icon on the top-right).
+3.	Once CloudShell opens, go to AWS Services → EC2.
+4.	Select your EC2 instance and click Connect.
+5.	Choose the SSH client tab.
+6.	Copy the ssh -i command shown there.
+7.	Paste the command in CloudShell and try to run it.
+❌ It will fail with an error like:
+“key pair is not available / no such file or directory”
+(because the key file is not yet in CloudShell).
+8.	Now, in CloudShell, click on the “+” (Actions) icon on the right side.
+9.	Select Upload file and upload the key pair (.pem) from your local machine.
+10.	After upload, copy the ssh -i command again from EC2 → Connect → SSH client.
+11.	Paste and execute the command in CloudShell.
+12.	✅ You are now successfully connected to the EC2 instance.
+________________________________________
+Step-by-Step: Create Windows EC2 Instance and Connect via RDP
+Step 1: Launch a Windows EC2 Instance
+1.	Log in to your AWS Management Console.
+2.	Navigate to EC2 → Instances → Launch Instances.
+3.	Select an Amazon Machine Image (AMI):
+o	Choose a Windows Server AMI (e.g., Windows Server 2019 or 2022).
+4.	Choose an Instance Type (e.g., t2.micro for free tier or as per your requirement).
+5.	Configure Instance Details as needed.
+6.	Add Storage if required (default is usually sufficient).
+7.	Configure Security Group:
+o	Ensure RDP port 3389 is allowed.
+o	Source can be My IP (for security) or a wider range if needed.
+8.	Select or create a new Key Pair:
+o	Download the .pem file (keep it safe; it’s needed to decrypt the password).
+9.	Click Launch Instance.
+________________________________________
+Step 2: Get the Public DNS / IP
+1.	After the instance is running, go to EC2 → Instances.
+2.	Select your instance and note the Public DNS (IPv4) or Public IP.
+________________________________________
+Step 3: Retrieve the Windows Administrator Password
+1.	Select your instance → Click Connect → RDP Client.
+2.	Click Get Password.
+3.	Upload your Key Pair (.pem) file.
+4.	Click Decrypt Password.
+5.	Copy the Administrator password shown.
+________________________________________
+Step 4: Connect via RDP
+1.	On your local Windows machine, open Remote Desktop Connection (mstsc).
+2.	In the Computer field, enter the Public DNS or IP address of the EC2 instance.
+3.	Click Connect.
+4.	In the login prompt:
+o	Username: Administrator
+o	Password: Paste the decrypted password from Step 3.
+5.	Click OK.
+________________________________________
+Step 5: You’re connected
+•	Your Windows EC2 instance desktop should appear.
+•	You can now use it as a normal Windows machine.
+________________________________________
+
+
+EXP 3: 
+Step 1: Launching EC2 Instances
+1. Sign in to AWS Management Console.
+2. Go to the EC2 dashboard.
+3. Click on "Launch Instance".
+4. Configure instance details:
+   - Instance Name: EFS-1
+5. Choose an Amazon Machine Image (AMI) for Linux.
+6. Select instance type: t2.micro.
+   - Key Pair: EFS
+   - Network: Choose Subnet-1a
+   - Security Group: Create a new security group (SG) and add NFS and allow from anywhere.
+7. Launch the instance.
+8. Repeat the above steps to launch another instance named EFS-2 in Subnet-1b with the same configuration.
+Step 2: Creating an EFS File System
+1. Go to the EFS service in the AWS Management Console.
+2. Click on "Create file system".
+3. Specify details:
+   - Name: Optional
+   - VPC: Default
+   - Enable region button.
+Click on "Next".
+4. In the Network settings:
+   - Delete all security groups.
+   - Select the newly created security group (NFS).---which is created while creating instance
+ Click on "Next" and review the configuration.
+Click on "Create file system".
+Step 3: Accessing the two EC2 instances named EFS-1 & EFS -2 in two different PowerShell sessions and performing the specified tasks:
+Accessing EFS-1 Instances in Two Different PowerShell Sessions:
+1. Open Two PowerShell Sessions:
+   - Open two separate PowerShell windows or tabs on your local machine.
+For each  Instance:
+2. SSH into the Instance:
+   - Use the SSH command to connect to the EFS-1 instance
+          ssh -i [path-to-your-keypair.pem] ec2-user@[instance-public-ip]
+3. Switch to Root User:
+   - Gain root access by executing the following command:
+         sudo su
+    4. Create a Directory:
+   - Make a directory named "efs" using the following command:
+          mkdir efs
+     5. Install Amazon EFS Utilities:
+   - Use yum package manager to install the Amazon EFS utilities:
+         yum install -y amazon-efs-utils
+     6. List Files:
+   - Execute the following command to list files in the current directory:
+          ls
+     7. Verify Installation (Optional):
+   - Optionally, you can verify the installation of the Amazon EFS utilities by checking the version:
+         efs-utils --version
+     Repeat Steps 2-7 for -------------------------  EFS-2 Instance.
+By following these steps, you'll have accessed each EFS-1 instance in separate PowerShell sessions, switched to the root user, created a directory named "efs," installed the Amazon EFS utilities, and listed files in the directory. This setup allows you to configure and manage each instance individually as needed.
+Step 4: Attaching EFS to EC2 Instances
+1. Go to the EFS service in the AWS Management Console.
+2. Click on the target EFS file system.
+3. Click on the "Attach" button.
+4. Choose "Mount via DNS" option.
+5. Copy the displayed command. ,on both ec2 instances(powershell)
+6. Paste and execute the copied command in the terminal to mount the EFS file system onto the instance.
+Step 5: Verify and Test EFS
+1. Change the directory to EFS on both instances.
+2. Create a file on one instance.
+3. Verify that the file automatically synchronizes and appears on the other instance.
+
+By above steps, we can successfully create EC2 instances, configured them, created an EFS file system, and attached it to the instances in the same availability zone in the Mumbai region. Now, the instances can seamlessly access and share files stored in the EFS file system.
